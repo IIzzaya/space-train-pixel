@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initial, grid, add, position, transfer, feed, collect, production, tick, consume, equip, start, expeditionStep, fail, restore } from '../app/engine.js';
+import { initial, grid, add, position, transfer, feed, collect, production, tick, consume, equip, start, expeditionStep, fail, restore } from '../app/engine.ts';
 test('initial save round trips and grids do not overlap', () => { const s = initial(1); assert.deepEqual(restore(JSON.stringify(s)), s); });
 test('spatial placement rejects a shape even with enough disconnected cells', () => { const s = initial(1), g = grid(2, 2); add(s, g, 'potato'); add(s, g, 'potato'); g.items[1].x = 1; g.items[1].y = 1; assert.equal(position(g, 'water'), null); });
 test('FIFO: full grid rejects new loot without replacing existing items', () => { const s = initial(1), g = grid(1, 1); add(s, g, 'potato'); const before = structuredClone(g); assert.equal(add(s, g, 'plastic'), false); assert.deepEqual(g, before); });

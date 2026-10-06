@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { VERSION, ITEMS, initial, grid, add, dimensions, canPlace, position, move, transfer, consume, production, tick, feed, collect, equip, start, expeditionStep, restore } from '../app/engine.js';
+import { VERSION, ITEMS, initial, grid, add, dimensions, canPlace, position, move, transfer, consume, production, tick, feed, collect, equip, start, expeditionStep, restore } from '../app/engine.ts';
 
 const emptyState = () => {
   const s = initial(1);

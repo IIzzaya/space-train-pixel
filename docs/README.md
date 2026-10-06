@@ -32,3 +32,5 @@
 本次文档没有批准具体架构、任务排期或首版内容数量。待确认项在解决前，不得改写成默认值或实现承诺。
 
 [返回仓库首页](../README.md)
+
+- [全画布 Three.js / TypeScript 渲染架构](rendering-architecture.md)

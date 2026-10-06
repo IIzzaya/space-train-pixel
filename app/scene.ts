@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+import type { ItemType } from './types';
 const palette = { dark: '#182d36', metal: '#537778', light: '#adc3a2', cream: '#eee2bc', orange: '#e2a34a', red: '#b85045', green: '#75a96b', blue: '#6badd0' };
-const materials = new Map();
-function material(c){ if(!materials.has(c)) materials.set(c,new THREE.MeshLambertMaterial({color:c})); return materials.get(c); }
-function box(g,x,y,z,w,h,d,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material(c)); m.position.set(x,y,z); g.add(m); return m; }
-function voxel(g,x,y,z,c,s=.24){ return box(g,x*s,y*s,z*s,s,s,s,c); }
-export function itemModel(type){
+const materials = new Map<string, THREE.MeshLambertMaterial>();
+function material(c: string): THREE.MeshLambertMaterial{ if(!materials.has(c)) materials.set(c,new THREE.MeshLambertMaterial({color:c})); return materials.get(c)!; }
+function box(g: THREE.Object3D, x: number, y: number, z: number, w: number, h: number, d: number, c: string): THREE.Mesh<THREE.BoxGeometry, THREE.MeshLambertMaterial>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material(c)); m.position.set(x,y,z); g.add(m); return m; }
+
+export function itemModel(type: ItemType): THREE.Group{
  const g=new THREE.Group();
  if(type==='water'){box(g,0,0,0,.58,1.15,.52,palette.blue);box(g,0,.67,0,.36,.22,.34,palette.cream);box(g,0,-.05,.273,.6,.35,.02,palette.cream);box(g,-.18,.22,.28,.1,.36,.03,'#bce7e9');}
  if(type==='potato'){box(g,0,0,0,.77,.55,.55,'#b88749');box(g,.08,.25,0,.48,.18,.4,'#c9a360');box(g,-.23,-.07,.29,.09,.08,.03,'#6c563e');box(g,.18,.12,.29,.08,.09,.03,'#6c563e');}
@@ -16,12 +16,17 @@ export function itemModel(type){
  if(type==='backpack'){box(g,0,0,0,.92,.98,.48,'#6a805c');box(g,0,-.17,.31,.69,.49,.19,'#a4aa72');box(g,-.34,.15,.29,.13,.8,.11,'#bd9b65');box(g,.34,.15,.29,.13,.8,.11,'#bd9b65');box(g,0,.58,0,.47,.16,.17,'#b0ae7a');}
  return g;
 }
-function setup(w,h,transparent=false){ let renderer;try{renderer=new THREE.WebGLRenderer({antialias:false,alpha:transparent,preserveDrawingBuffer:true});renderer.setPixelRatio(1);}catch{renderer=new SVGRenderer();renderer.isSoftware=true;renderer.setQuality('low');renderer.setClearColor('#253e48',transparent?0:1);}renderer.setSize(w,h);renderer.outputColorSpace=THREE.SRGBColorSpace; const scene=new THREE.Scene();scene.add(new THREE.AmbientLight('#dcecc6',.9));const light=new THREE.DirectionalLight('#fff1c3',1.3);light.position.set(-7,15,8);scene.add(light);return {renderer,scene}; }
-function rasterize(svg,w,h){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(image,0,0,w,h);resolve(canvas);};image.onerror=reject;image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(svg));});}
-export async function makeIcons(types){const {renderer,scene}=setup(64,64,true);const camera=new THREE.OrthographicCamera(-1,1,1,-1,.1,100);camera.position.set(2,1.8,3);camera.lookAt(0,0,0);const icons={};for(const type of types){const model=itemModel(type);scene.add(model);renderer.render(scene,camera);if(renderer.isSoftware)renderer.domElement.style.backgroundColor='transparent';icons[type]=renderer.isSoftware?(await rasterize(renderer.domElement,64,64)).toDataURL():renderer.domElement.toDataURL();scene.remove(model);}renderer.dispose?.();return icons;}
-export function createWorld(canvasHost){
- const {renderer,scene}=setup(640,250);const display=renderer.isSoftware?document.createElement('canvas'):renderer.domElement;if(renderer.isSoftware){display.width=640;display.height=250;}canvasHost.append(display);display.setAttribute('aria-label','Three.js 原创体素列车与废土车站'+(renderer.isSoftware?'（软件渲染）':''));if(renderer.isSoftware)canvasHost.dataset.renderer='software';else canvasHost.dataset.renderer='webgl';scene.background=new THREE.Color('#253e48');scene.fog=new THREE.Fog('#253e48',23,55);
- const camera=new THREE.OrthographicCamera(-14,14,5.47,-5.47,.1,100);camera.position.set(12,12,18);camera.lookAt(0,.7,0);
+
+export function litScene(): THREE.Scene {
+  const scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight('#dcecc6', .9));
+  const light = new THREE.DirectionalLight('#fff1c3', 1.3);
+  light.position.set(-7, 15, 8); scene.add(light); return scene;
+}
+export function createWorldScene(aspect: number) {
+ const scene=litScene(); scene.background=new THREE.Color('#253e48');
+ const halfHeight = 3;
+ const camera=new THREE.OrthographicCamera(-halfHeight*aspect,halfHeight*aspect,halfHeight,-halfHeight,.1,100);camera.position.set(3,8,25);camera.lookAt(-.7,.8,0);
  const ground=new THREE.Group();scene.add(ground);box(ground,0,-1.25,0,70,.3,45,'#384f4a');
  for(let i=-23;i<24;i++){box(ground,i*1.1,-1.01,.2,.24,.15,5,'#253735');}for(const z of [-1.35,1.65])box(ground,0,-.89,z,65,.14,.12,'#93a49b');
  let rng=912;function rand(){rng=(Math.imul(rng,1664525)+1013904223)>>>0;return rng/4294967296;}
@@ -47,7 +52,13 @@ export function createWorld(canvasHost){
  box(train,4.7,.72,-.55,1.15,1.1,1.2,'#4c8b9e');box(train,4.7,1.34,-.55,1.24,.18,1.27,'#a8c1b2');for(const y of [.4,1])box(train,4.7,y,.07,1.2,.1,.04,'#c1d6bc');box(train,5.75,1.12,-.55,.18,1.65,.18,'#c1c9ac');box(train,5.2,1.9,-.55,1.25,.16,.16,'#c1c9ac');box(train,6.2,.6,.6,1.2,.8,1,'#718778');box(train,6.2,1.04,.6,1.3,.12,1.15,'#baa982');
  // Traveller with pack and lantern.
  const person=new THREE.Group();train.add(person);person.position.set(1.4,.3,.9);box(person,0,.24,0,.32,.5,.28,'#303b43');box(person,0,.65,0,.52,.55,.35,'#c29458');box(person,0,1.11,0,.38,.36,.36,'#dbb789');box(person,0,1.31,0,.57,.15,.46,'#70866c');box(person,-.32,.66,0,.16,.45,.2,'#bd9159');box(person,.32,.65,0,.16,.45,.2,'#bd9159');box(person,.5,.43,0,.2,.27,.23,'#efd38b');
- const smoke=[];for(let i=0;i<5;i++)smoke.push(box(scene,-8.5-i*.3,3+i*.5,-.4,.3+i*.1,.3+i*.1,.3+i*.1,'#8b9c87'));
- let active=false;let last=-1000;let dirty=true;function draw(t){if(renderer.isSoftware&&!dirty)return;dirty=false;last=t;ground.position.x=active?-(t*.0008%1.1):0;person.position.y=.3+Math.sin(t*.002)*.035;leaves.rotation.z=Math.sin(t*.001)*.009;smoke.forEach((m,i)=>{m.position.y=2.7+((t*.00035+i*.4)%2);m.scale.setScalar(.6+(m.position.y-2.7)*.3);});renderer.render(scene,camera);if(renderer.isSoftware)rasterize(renderer.domElement,640,250).then(c=>{display.getContext('2d').drawImage(c,0,0);}).catch(()=>{});}let raf;const loop=t=>{draw(t);raf=requestAnimationFrame(loop);};loop(0);
- return {setActive(v){if(v!==active)dirty=true;active=v;scene.background.set(v?'#202d40':'#253e48');},dispose(){cancelAnimationFrame(raf);renderer.dispose?.();}};
+ const smoke: THREE.Mesh[]=[];for(let i=0;i<5;i++)smoke.push(box(scene,-8.5-i*.3,3+i*.5,-.4,.3+i*.1,.3+i*.1,.3+i*.1,'#8b9c87'));
+
+ return { scene, camera, update(t: number, active: boolean) {
+   ground.position.x=active?-(t*.0008%1.1):0;
+   person.position.y=.3+Math.sin(t*.002)*.035;
+   leaves.rotation.z=Math.sin(t*.001)*.009;
+   smoke.forEach((m,i)=>{m.position.y=2.7+((t*.00035+i*.4)%2);m.scale.setScalar(.6+(m.position.y-2.7)*.3);});
+   (scene.background as THREE.Color).set(active?'#202d40':'#253e48');
+ }, dispose() { scene.traverse(object => { if(object instanceof THREE.Mesh) object.geometry.dispose(); }); } };
 }
